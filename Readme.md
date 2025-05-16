@@ -14,7 +14,7 @@
 - [Model Exploration and Model Selection](#model-exploration-and-model-selection)
 - [Implementation of Selected Models](#implementation-of-selected-models)
    - [5 - Fold Cross-Validation](#5---fold-cross-validation)
-   - [Random Forest Model](#random-forest-model)
+   - [Catboost Model](#catboost-model)
    - [Feature Importance](#feature-importance)
 - [Performance Evaluation and Interpretation](#performance-evaluation-and-interpretation)
    - [Precision](#precision)
