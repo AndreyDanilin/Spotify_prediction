@@ -166,6 +166,8 @@ The purpose of this project is to predict whether a song is classified as a hit 
 6. Neural Network
 7. Random Forest
 8. Gradient Boosting
+9. Catboost
+10. Xgboost
 
 Next, we split the dataset into 8 0% training and 2 0% testing datasets. We use 3-Fold cross validation to choose the best models. The Scores of the models are shown in table 1.
 
@@ -178,7 +180,7 @@ Next, we split the dataset into 8 0% training and 2 0% testing datasets. We use 
 |  Support Vector Machine (RBF Kernel)   | 73.4% |
 |             Neural Network             | 73.1% |
 |             Random Forest              | 73.6% |
-|           Gradient Boosting            | 73.0% |
+|       Gradient Boosting(sklearn)       | 73.0% |
 |                Catboost                | 77.1% |
 |                Xgboost                 | 75.6% |
 
