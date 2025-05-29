@@ -1,5 +1,7 @@
 # Spotify hits prediction
 
+**All the work done is in this [notebook](https://github.com/AndreyDanilin/Spotify_prediction/blob/main/Spotify_prediction.ipynb)**
+
 ## Table of Contents
 
 - [Problem Setting](#problem-setting)
