@@ -1,9 +1,0 @@
-pandas~=2.2.3
-numpy~=1.26.4
-seaborn~=0.13.2
-matplotlib~=3.10.0
-torch~=2.7.0+cu128
-xgboost~=3.0.1
-optuna~=4.3.0
-catboost~=1.2.3
-scikit-learn<=1.5.2

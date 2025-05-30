@@ -1,5 +1,7 @@
 # Spotify hits prediction
 
+**All the work done is in this [notebook](https://github.com/AndreyDanilin/Spotify_prediction/blob/main/Spotify_prediction.ipynb)**
+
 ## Table of Contents
 
 - [Problem Setting](#problem-setting)
@@ -277,7 +279,7 @@ It is the number of members of a class that the classifier identified correctly 
         <img src="assets/Picture8.png"> 
   </a>		
     <br>
-	Figure 9: ROC Curve
+	Figure 7: ROC Curve
 </p>
 
 The ROC Curve plots the sensitivity based on 1-specificity for 100 different cutoffs. Here the area under the curve is 0.76 which shows that the model is performing well. The random model has an area of 0. 5 and the best classifier has an area of 1.
