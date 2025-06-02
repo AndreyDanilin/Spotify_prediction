@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build: app
+    container_name: music-classifier
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app/models:/app/app/models
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
