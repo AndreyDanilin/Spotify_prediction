@@ -156,120 +156,96 @@ The total number of Songs after removing the outliers is 33401. We count the num
 
 From figure 5 we can see that almost half of the songs are hit, and half of the songs are not considered hit, and we do not need oversampling.
 
+## Data preprocessing
+
+1. Track name will be encoded via bert-like model
+2. Artist name will be encoded via target encoder. Because i think that connection between artist and popularity of his track is obvious and we should use them
+3. Decade of release will be encoded wia One-hot encoder like typycal categorial column 
+4. Numerical columns will be scaled
+
 ## Model Exploration and Model Selection
 
 The purpose of this project is to predict whether a song is classified as a hit song or is classified as a non-hit song. Hence, the goal of the project is classification, we use different classification models to get the best results. At first, 8 models are selected for this classification task. These models are:
 
 1. Logistic Regression
 2. K-Nearest Neighbors
-3. Decision Tree
-4. Support Vector Machine (Linear Kernel)
-5. Support Vector Machine (RBF Kernel)
-6. Neural Network
-7. Random Forest
-8. Gradient Boosting
-9. Catboost
-10. Xgboost
+3. Support Vector Machine (Linear Kernel)
+4. Support Vector Machine (RBF Kernel)
+5. Neural Network(sklearn)
+6. Random Forest
+7. Catboost
+8. Xgboost
+9. LinearDiscriminantAnalysis
+10. Gaussian Naive Bayes
+11. Ridge
 
-Next, we split the dataset into 8 0% training and 2 0% testing datasets. We use 3-Fold cross validation to choose the best models. The Scores of the models are shown in table 1.
+Next, we split the dataset into 80% training and 20% testing datasets. We use 3-Fold cross validation to choose the best models. The Scores of the models are shown in table 1.
 
 |                 Model                  | Score |
 |:--------------------------------------:|:-----:|
-|          Logistic Regression           | 68.1% |
-|          K-Nearest Neighbors           | 68.4% |
-|             Decision Tree              | 64.8% |
-| Support Vector Machine (Linear Kernel) | 68.2% |
-|  Support Vector Machine (RBF Kernel)   | 73.4% |
-|             Neural Network             | 73.1% |
-|             Random Forest              | 73.6% |
-|       Gradient Boosting(sklearn)       | 73.0% |
-|                Catboost                | 77.1% |
-|                Xgboost                 | 75.6% |
+|          Logistic Regression           | 95.3% |
+|          K-Nearest Neighbors           | 75.9% |
+| Support Vector Machine (Linear Kernel) | 95.2% |
+|  Support Vector Machine (RBF Kernel)   | 93.4% |
+|        Neural Network(sklearn)         | 94.2% |
+|             Random Forest              | 94.6% |
+|                Catboost                | 95.9% |
+|                Xgboost                 | 95.6% |
+|       LinearDiscriminantAnalysis       | 95.4% |
+|          Gaussian Naive Bayes          | 85.8% |
+|                 Ridge                  | 78.7% |
 
-From table 1, the models are divided into two groups. Models that have a score lower than 69%, and Models with a score higher than 72%. Therefore, we choose 4 models that have a score of 72% and above for the next step. These models are Support Vector Machine (RBF Kernel), Neural Network, Random Forest, and Gradient Boosting.
 
-## Implementation of Selected Models
+Best results showed: catboost, xgboost, log regression. Neural network showed a good potential, we should try to build a torch neural network for this task
 
-### 5 - Fold Cross-Validation
 
-In this step, we use cross-validation to observe the performance of the selected models. We use 5 - fold cross-validation, where the data is divided into 5 folds and 4 are used for training and the other one is used as the validation set. Each time 1 of the folds are used as the validation and therefore the model is fitted 5 times.
+### Hyperparameter tuning and choosing the best model
 
-|          Model          | Score  |
-|:-----------------------:|:------:|
-|        Catboost         | 77.12% |
-| Neural Network(sklearn) | 71.73% |
-|      Random Forest      | 75.88% |
-|        xgboost          | 75.65% |
+In this step we build a torchNN and find the best hyperparameters for rest of the models.
 
-From the results of the cross-validation, we choose the **Catboost classifier** as our final model.
+Results showed below
 
-### Catboost Model
+|         Model         | Score  | Prediction time |
+|:---------------------:|:------:|:---------------:|
+|       Catboost        | 95.79% |      0.56       |
+| Neural Network(torch) | 94.51% |      0.01       |
+|    Log Regression     | 95.46% |      0.04       |
+|        Xgboost        | 95.82% |      0.07       |
 
-We first train the model on 80% training data (as we have 34000 rows, 80% training is enough).
+From the results of the tests, we choose the **Xgboost classifier** as our final model.
 
 The model will give an accuracy of 77.74%. In the next steps, we use different methods to enhance the performance of the model and finally evaluate the model.
 
-### Feature Importance
+## Xgboost Performance Evaluation and Interpretation
 
-The catboost model splits the nodes based on more important features and implicitly performs feature selection. In this step, we will try to remove some features with less importance and see if the model accuracy and running time are enhanced or not. Figure 6 shows the importance of each feature.
+For measuring the performance of the xgboost classifier, we use accuracy score, confusion matrix, Precision, Recall, and f1_score.
 
-<p align="center">  
-    <br>
-	<a href="#">
-        <img src="assets/Picture6.png"> 
-  </a>		
-    <br>
-	Figure 6: Feature Importance
-</p>
+The accuracy of the predictions by the xgboost classifier is 73.82% on the test data. This means that the classifier predicted correctly on the test data by 73.82%. This in turn implies that the error rate is 2 6.18%.
 
-It is observed that sections, mode, and key don’t have a lot of importance in the random forest model.
+The confusion matrix of the xgboost classifier is as follows:
 
-After removing these three features, the performance of the model is decreased by 0. 6 %, and the running time is only decreased by 1 second. Therefore, we only use this section to observe the importance of each feature and we will keep all the features.
-
-
-### Hyperparameter Tuning
-
-A catboost model has various parameters, and in this part, we try to optimize the model performance by choosing the best parameters for our random forest model. Catboost parameters are:
-
- . Iterations  
- . Learning rate  
- . Depth  
- . Subsample  
- . Colsample_bylevel  
- . Min_data_in_leaf  
-
-I choose parameters with Optuna
-
-## Performance Evaluation and Interpretation
-
-For measuring the performance of the random forest classifier, we use accuracy score, confusion matrix, Precision, Recall, and f1_score.
-
-The accuracy of the predictions by the random forest classifier is 73.82% on the test data. This means that the classifier predicted correctly on the test data by 73.82%. This in turn implies that the error rate is 2 6.18%.
-
-The confusion matrix of the random forest classifier is as follows:
-
-|                           |  Predicted Hit  |  Predicted Non-Hit   |
-|:-------------------------:|:---------------:|:--------------------:|
-|       **Actual Hit**      |      3062       |         536          |
-|     **Actual Non-Hit**    |       983       |         2100         |
+|                           | Predicted Hit | Predicted Non-Hit |
+|:-------------------------:|:-------------:|:-----------------:|
+|      **Actual Hit**       |     3527      |        71         |
+|    **Actual Non-Hit**     |      179      |       2904        |
 
 The classification report for the test data and the predictions are:
 
 |                      | Precision | Recall | f1-score | Support |
 |:--------------------:|:---------:|:------:|:--------:|:-------:|
-|      **Non-Hit**     |    0.8    |  0.68  |   0.73   |  3083   |
-|        **Hit**       |   0.76    |  0.85  |   0.80   |  3598   |
-|      **accuracy**    |           |        |   0.77   |  6681   |
-|     **macro avg**    |   0.78    |  0.77  |   0.77   |  6681   |
-|     **weighted avg** |   0.78    |  0.77  |   0.77   |  6681   |
+|     **Non-Hit**      |   0.98    |  0.94  |   0.96   |  3083   |
+|       **Hit**        |   0.95    |  0.98  |   0.97   |  3598   |
+|     **accuracy**     |           |        |   0.96   |  6681   |
+|    **macro avg**     |   0.96    |  0.96  |   0.96   |  6681   |
+|   **weighted avg**   |   0.96    |  0.96  |   0.96   |  6681   |
 
 ### Precision
 
-It is the number of correctly identified members of a class divided by all the times the model predicted that class. In the case of “hits”, the precision score would be the number of correctly identified “hits” divided by the total number of times the classifier predicted “hits,” rightly or wrongly. This value is around 77%, meaning that out of all the songs which are predicted as a hit song by the model, 73% of them are hit songs.
+It is the number of correctly identified members of a class divided by all the times the model predicted that class. In the case of “hits”, the precision score would be the number of correctly identified “hits” divided by the total number of times the classifier predicted “hits,” rightly or wrongly. This value is around 95%, meaning that out of all the songs which are predicted as a hit song by the model, 95% of them are hit songs.
 
 ### Recall (Sensitivity)
 
-It is the number of members of a class that the classifier identified correctly divided by the total number of members in that class. For “hits”, this would be the number of actual “hits” that the classifier correctly identified as such. This value is 77%, meaning that out of all the hit songs, 85% are correctly classified as hit songs.
+It is the number of members of a class that the classifier identified correctly divided by the total number of members in that class. For “hits”, this would be the number of actual “hits” that the classifier correctly identified as such. This value is 98%, meaning that out of all the hit songs, 98% are correctly classified as hit songs.
 
 ### ROC Curve
 
@@ -282,14 +258,14 @@ It is the number of members of a class that the classifier identified correctly 
 	Figure 7: ROC Curve
 </p>
 
-The ROC Curve plots the sensitivity based on 1-specificity for 100 different cutoffs. Here the area under the curve is 0.76 which shows that the model is performing well. The random model has an area of 0. 5 and the best classifier has an area of 1.
+The ROC Curve plots the sensitivity based on 1-specificity for 100 different cutoffs. Here the area under the curve is 0.96 which shows that the model is performing well. The random model has an area of 0. 5 and the best classifier has an area of 1.
 
 ## Project Results
 
-In the original dataset consisting of 40k records, there were multiple outliers in the initial 19 features. The features with the most outliers are removed. The remaining dataset is then split into a train test split of 80 – 20. The classification models such as Logistic Regression, K-Nearest Neighbors, Decision Tree, Support Vector Machine (Linear Kernel), Support Vector Machine (RBF Kernel), Neural Network, Random Forest, catboost, xgboost, torch neural network and Gradient Boosting are considered. The results show that the Random Forest model is the best classification model for our dataset. It was able to classify hit songs and non-hit songs with an accuracy of **77%.**
+In the original dataset consisting of 40k records, there were multiple outliers in the initial 19 features. The features with the most outliers are removed. The remaining dataset is then split into a train test split of 80 – 20. The classification models such as Logistic Regression, K-Nearest Neighbors, Decision Tree, Support Vector Machine (Linear Kernel), Support Vector Machine (RBF Kernel), Neural Network, Random Forest, catboost, xgboost, torch neural network and Gradient Boosting are considered. The results show that the xgboost model is the best classification model for our dataset. It was able to classify hit songs and non-hit songs with an accuracy of **96%.**
 
 
-The precision, recall, and the area under the ROC curve showed that the model is performing well. For hit songs, the Recall was 81% meaning that out of all the hit songs, the model predicted it correctly 81% of the time.
+The precision, recall, and the area under the ROC curve showed that the model is performing well. For hit songs, the Recall was 98% meaning that out of all the hit songs, the model predicted it correctly 98% of the time.
 
 ## Impact of the Project Outcomes
 
