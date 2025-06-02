@@ -14,14 +14,14 @@ model building, and application development.
 
 **List of content**
 
-- **[Spotify prediction]()**
+- **[Spotify prediction](https://github.com/AndreyDanilin/Spotify_prediction/blob/main/Spotify_prediction.ipynb)**
 
 Main notebook with data research and model prediction work
 
-- **[Research report]()**
+- **[Research report](https://github.com/AndreyDanilin/Spotify_prediction/blob/main/Research_report.md)**
 
 Research describing document
 
-- **[app(WIP)]()**
+- **[music_classifier(WIP)](https://github.com/AndreyDanilin/Spotify_prediction/tree/main/music-classifier)**
 
 Hit-predicting app on Fast api
