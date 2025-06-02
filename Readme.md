@@ -252,10 +252,10 @@ It is the number of members of a class that the classifier identified correctly 
 <p align="center">  
     <br>
 	<a href="#">
-        <img src="assets/Picture8.png"> 
+        <img src="assets/Picture6.png"> 
   </a>		
     <br>
-	Figure 7: ROC Curve
+	Figure 6: ROC Curve
 </p>
 
 The ROC Curve plots the sensitivity based on 1-specificity for 100 different cutoffs. Here the area under the curve is 0.96 which shows that the model is performing well. The random model has an area of 0. 5 and the best classifier has an area of 1.
