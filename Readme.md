@@ -22,6 +22,6 @@ Main notebook with data research and model prediction work
 
 Research describing document
 
-- **[music_classifier(WIP)](https://github.com/AndreyDanilin/Spotify_prediction/tree/main/music-classifier)**
+- **[music_classifier](https://github.com/AndreyDanilin/Spotify_prediction/tree/main/music-classifier)**
 
 Hit-predicting app on Fast api
