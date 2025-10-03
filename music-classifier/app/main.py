@@ -9,13 +9,9 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any
 import uvicorn
 
-# Инициализация приложения
-app = FastAPI(
-    title="Music Track Classifier API",
-    description="API для классификации музыкальных треков с использованием BERT-эмбеддингов и ML-модели",
-    version="1.0"
-)
-
+# Глобальные переменные для моделей
+pipeline = None
+sentence_model = None
 
 # Загрузка моделей при старте приложения
 @asynccontextmanager
@@ -24,7 +20,7 @@ async def lifespan():
 
     try:
         # Загрузка предварительно обученного pipeline
-        pipeline = joblib.load('xgboost_pipeline.pkl')
+        pipeline = joblib.load('xgb_pipe.joblib')
         print("✅ Pipeline successfully loaded")
 
         # Загрузка модели для эмбеддингов текста
@@ -35,14 +31,41 @@ async def lifespan():
         print(f"❌ Error loading models: {e}")
         raise RuntimeError("Model loading failed") from e
 
+    yield  # Приложение запущено
+
+    # Очистка ресурсов при завершении
+    print("🔄 Shutting down application...")
+
+
+# Инициализация приложения
+app = FastAPI(
+    title="Music Track Classifier API",
+    description="API для классификации музыкальных треков с использованием BERT-эмбеддингов и ML-модели",
+    version="1.0",
+    lifespan=lifespan
+)
+
 
 # Модель для валидации входных данных
 class TrackRequest(BaseModel):
     artist: str
     track: str
     decade_of_release: int
-    # Добавьте другие поля вашего датасета здесь
-    # Пример: duration_ms: int, popularity: int, etc.
+    danceability: float
+    energy: float
+    key: int
+    loudness: float
+    mode: int
+    speechiness: float
+    acousticness: float
+    instrumentalness: float
+    liveness: float
+    valence: float
+    tempo: float
+    duration_ms: int
+    time_signature: int
+    chorus_hit: float
+    sections: int
 
 
 class BatchRequest(BaseModel):
@@ -143,7 +166,7 @@ async def health_check():
 # Запуск сервера
 if __name__ == "__main__":
     uvicorn.run(
-        "main:music-classifier",
+        "main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
