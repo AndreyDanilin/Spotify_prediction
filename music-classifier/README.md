@@ -1,77 +1,77 @@
 # Music Classifier API
 
-API для классификации музыкальных треков с использованием BERT-эмбеддингов и XGBoost модели.
+An API for classifying music tracks using BERT embeddings and XGBoost model.
 
-## Описание
+## Description
 
-Этот проект представляет собой веб-API для предсказания музыкальных характеристик на основе аудио-фич и названий треков. API использует предобученную модель XGBoost и BERT-эмбеддинги для обработки текстовых данных.
+This project is a web API for predicting music characteristics based on audio features and track names. The API uses a pre-trained XGBoost model and BERT embeddings for text processing.
 
-## Возможности
+## Features
 
-- 🎵 Одиночное предсказание для одного трека
-- 📦 Пакетная обработка множественных треков
-- 🔍 Health check для мониторинга состояния API
-- 🐳 Docker контейнеризация для простого развертывания
+- 🎵 Single prediction for one track
+- 📦 Batch processing for multiple tracks
+- 🔍 Health check for API status monitoring
+- 🐳 Docker containerization for easy deployment
 
-## Структура проекта
+## Project Structure
 
 ```
 music-classifier/
 ├── app/
-│   ├── main.py          # Основное приложение FastAPI
-│   ├── config.py        # Конфигурация приложения
-│   └── xgb_pipe.joblib  # Предобученная модель
+│ ├── main.py # Main FastAPI application
+│ ├── config.py # Application configuration
+│ └── xgb_pipe.joblib # Pre-trained model
 ├── scripts/
-│   └── start.sh         # Скрипт запуска сервера
-├── test_api.py          # Тестовый скрипт
-├── requirements.txt     # Python зависимости
-├── Dockerfile          # Docker образ
-├── docker-compose.yml  # Docker Compose конфигурация
-└── README.md           # Этот файл
+│ └── start.sh # Server startup script
+├── test_api.py # Test script
+├── requirements.txt # Python dependencies
+├── Dockerfile # Docker image
+├── docker-compose.yml # Docker Compose configuration
+└── README.md # This file
 ```
 
-## Быстрый старт
+## Quick Start
 
-### Локальный запуск
+### Local Launch
 
-1. **Установка зависимостей:**
+1. **Install dependencies:**
    ```bash
    cd music-classifier
    pip install -r requirements.txt
    ```
 
-2. **Запуск приложения:**
+2. **Start the application:**
    ```bash
    python app/main.py
    ```
 
-3. **Проверка работы:**
+3. **Test the functionality:**
    ```bash
    python test_api.py
    ```
 
-### Docker запуск
+### Docker Launch
 
-1. **Сборка и запуск с Docker Compose:**
+1. **Build and run with Docker Compose:**
    ```bash
    cd music-classifier
    docker-compose up --build
    ```
 
-2. **Проверка работы:**
+2. **Test the functionality:**
    ```bash
    python test_api.py
    ```
 
-## API Эндпоинты
+## API Endpoints
 
 ### Health Check
 ```
 GET /health
 ```
-Проверяет состояние API и загруженных моделей.
+Test of python app/main.py and loaded models.
 
-**Ответ:**
+**Response:**
 ```json
 {
   "status": "OK",
@@ -80,12 +80,12 @@ GET /health
 }
 ```
 
-### Одиночное предсказание
+### Single Prediction
 ```
 POST /predict
 ```
 
-**Тело запроса:**
+**Request body:**
 ```json
 {
   "artist": "The Beatles",
@@ -109,7 +109,7 @@ POST /predict
 }
 ```
 
-**Ответ:**
+**Response:**
 ```json
 {
   "prediction": 1,
@@ -118,12 +118,12 @@ POST /predict
 }
 ```
 
-### Пакетное предсказание
+### Batch Prediction
 ```
 POST /batch_predict
 ```
 
-**Тело запроса:**
+**Request body:**
 ```json
 {
   "items": [
@@ -151,7 +151,7 @@ POST /batch_predict
 }
 ```
 
-**Ответ:**
+**Response:**
 ```json
 {
   "results": [
@@ -164,55 +164,55 @@ POST /batch_predict
 }
 ```
 
-## Параметры входных данных
+## Input Parameters
 
-| Параметр | Тип | Описание |
-|----------|-----|----------|
-| `artist` | string | Исполнитель |
-| `track` | string | Название трека |
-| `decade_of_release` | integer | Декада выпуска (1960, 1970, etc.) |
-| `danceability` | float | Танцевальность (0.0-1.0) |
-| `energy` | float | Энергичность (0.0-1.0) |
-| `key` | integer | Музыкальный ключ (0-11) |
-| `loudness` | float | Громкость в дБ |
-| `mode` | integer | Лад (0=минор, 1=мажор) |
-| `speechiness` | float | Речевость (0.0-1.0) |
-| `acousticness` | float | Акустичность (0.0-1.0) |
-| `instrumentalness` | float | Инструментальность (0.0-1.0) |
-| `liveness` | float | Живость (0.0-1.0) |
-| `valence` | float | Позитивность (0.0-1.0) |
-| `tempo` | float | Темп в BPM |
-| `duration_ms` | integer | Длительность в миллисекундах |
-| `time_signature` | integer | Размер (3, 4, 5, etc.) |
-| `chorus_hit` | float | Попадание в припев |
-| `sections` | integer | Количество секций |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `artist` | string | Artist name |
+| `track` | string | Track title |
+| `decade_of_release` | integer | Release decade (1960, 1970, etc.) |
+| `danceability` | float | Danceability (0.0-1.0) |
+| `energy` | float | Energy level (0.0-1.0) |
+| `key` | integer | Musical key (0-11) |
+| `loudness` | float | Loudness in dB |
+| `mode` | integer | Mode (0=minor, 1=major) |
+| `speechiness` | float | Speechiness (0.0-1.0) |
+| `acousticness` | float | Acousticness (0.0-1.0) |
+| `instrumentalness` | float | Instrumentalness (0.0-1.0) |
+| `liveness` | float | Liveness (0.0-1.0) |
+| `valence` | float | Positivity (0.0-1.0) |
+| `tempo` | float | Tempo in BPM |
+| `duration_ms` | integer | Duration in milliseconds |
+| `time_signature` | integer | Time signature (3, 4, 5, etc.) |
+| `chorus_hit` | float | Chorus hit probability |
+| `sections` | integer | Number of sections |
 
-## Тестирование
+## Testing
 
-Запустите тестовый скрипт для проверки всех эндпоинтов:
+Run the test script to verify all endpoints:
 
 ```bash
 python test_api.py
 ```
 
-## Мониторинг
+## Monitoring
 
-API включает в себя health check эндпоинт для мониторинга состояния:
-- Проверка загрузки ML модели
-- Проверка загрузки модели эмбеддингов
-- Общий статус приложения
+The API includes a health check endpoint for status monitoring:
+- ML model loading verification
+- Embedding model loading verification
+- Overall application status
 
-## Технологии
+## Technologies
 
-- **FastAPI** - Веб-фреймворк для создания API
-- **XGBoost** - Градиентный бустинг для машинного обучения
-- **Sentence Transformers** - BERT-эмбеддинги для текста
-- **Pandas** - Обработка данных
-- **Docker** - Контейнеризация
-- **Uvicorn** - ASGI сервер
+- **FastAPI** - Web framework for API creation
+- **XGBoost** - Gradient boosting for machine learning
+- **Sentence Transformers** - BERT embeddings for text
+- **Pandas** - Data processing
+- **Docker** - Containerization
+- **Uvicorn** - ASGI server
 
-## Лицензия
+## License
 
-Этот проект является частью исследовательского проекта по анализу данных.
+This project is part of a data analysis research project.
 
 
