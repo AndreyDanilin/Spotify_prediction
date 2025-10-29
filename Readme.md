@@ -92,7 +92,7 @@ python test_api.py
 
 ## 📈 Results
 
-- **Best model**: XGBoost with accuracy > 85%
+- **Best model**: XGBoost with accuracy > 96%
 - **Important features**: danceability, energy, valence, tempo
 - **Time coverage**: 60 years of musical history (1960-2019)
 
