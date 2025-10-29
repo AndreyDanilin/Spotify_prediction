@@ -13,9 +13,32 @@ import uvicorn
 pipeline = None
 sentence_model = None
 
+# --- Приведение decade_of_release к обученному формату ---
+def normalize_decade(value):
+    # если значение числовое — сокращаем до десятилетия
+    try:
+        val = int(value)
+        if val >= 1960 and val < 1970:
+            return '60'
+        elif val >= 1970 and val < 1980:
+            return '70'
+        elif val >= 1980 and val < 1990:
+            return '80'
+        elif val >= 1990 and val < 2000:
+            return '90'
+        elif val >= 2000 and val < 2010:
+            return '0'
+        elif val >= 2010 and val < 2020:
+            return '10'
+        else:
+            return 'unknown'
+    except Exception:
+        # если уже строка, возвращаем как есть
+        return str(value)
+
 # Загрузка моделей при старте приложения
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app):
     global pipeline, sentence_model
 
     try:
@@ -72,85 +95,105 @@ class BatchRequest(BaseModel):
     items: List[TrackRequest]
 
 
-# Эндпоинт для одиночного предсказания
 @app.post("/predict")
 async def predict(request: TrackRequest):
     try:
-        # Конвертация в DataFrame
         input_df = pd.DataFrame([request.dict()])
-
-        # Генерация эмбеддингов для трека
+        input_df['decade_of_release'] = input_df['decade_of_release'].apply(normalize_decade)
+        # --- Добавляем эмбеддинги ---
         track_embedding = sentence_model.encode(
             input_df['track'].values,
             show_progress_bar=False
         )
-
-        # Добавление эмбеддингов в данные
         for i in range(track_embedding.shape[1]):
-            input_df[f'track_embed_{i}'] = track_embedding[:, i]
+            input_df[f'track_emb_{i}'] = track_embedding[:, i]
 
-        # Удаление исходного текстового поля
         input_df = input_df.drop(columns=['track'])
 
-        # Предсказание
+        # --- Обеспечиваем наличие нужных колонок ---
+        if 'artist' not in input_df.columns:
+            input_df['artist'] = 'unknown_artist'
+        if 'decade_of_release' not in input_df.columns:
+            input_df['decade_of_release'] = 'unknown_decade'
+
+        # --- Преобразуем типы ---
+        input_df['artist'] = input_df['artist'].astype(str)
+        input_df['decade_of_release'] = input_df['decade_of_release'].astype(str)
+
+        # Все остальные — числа
+        for col in input_df.columns:
+            if col not in ['artist', 'decade_of_release']:
+                input_df[col] = pd.to_numeric(input_df[col], errors='coerce')
+
+        input_df = input_df.fillna(0.0)
+
+        # --- Предсказание ---
         prediction = pipeline.predict(input_df)
         probabilities = pipeline.predict_proba(input_df)
 
         return {
             "prediction": int(prediction[0]),
             "probabilities": probabilities[0].tolist(),
-            "track_embedding_dim": track_embedding.shape[1]
+            "track_embedding_dim": int(track_embedding.shape[1]),
+            "input_shape": input_df.shape   
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction error: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
 
 
-# Эндпоинт для пакетной обработки
+
+# --- Эндпоинт для пакетного предсказания ---
 @app.post("/batch_predict")
 async def batch_predict(request: BatchRequest):
     try:
-        # Конвертация в DataFrame
         input_data = [item.dict() for item in request.items]
         input_df = pd.DataFrame(input_data)
+        input_df['decade_of_release'] = input_df['decade_of_release'].apply(normalize_decade)
 
-        # Генерация эмбеддингов для всех треков
+        # --- Добавляем эмбеддинги ---
         track_embeddings = sentence_model.encode(
             input_df['track'].values,
             show_progress_bar=False,
             batch_size=32
         )
-
-        # Добавление эмбеддингов в данные
         for i in range(track_embeddings.shape[1]):
-            input_df[f'track_embed_{i}'] = track_embeddings[:, i]
+            input_df[f'track_emb_{i}'] = track_embeddings[:, i]
 
-        # Удаление исходного текстового поля
         input_df = input_df.drop(columns=['track'])
 
-        # Пакетное предсказание
+        # --- Гарантируем наличие колонок ---
+        if 'artist' not in input_df.columns:
+            input_df['artist'] = 'unknown_artist'
+        if 'decade_of_release' not in input_df.columns:
+            input_df['decade_of_release'] = 'unknown_decade'
+
+        # --- Типы ---
+        input_df['artist'] = input_df['artist'].astype(str)
+        input_df['decade_of_release'] = input_df['decade_of_release'].astype(str)
+        for col in input_df.columns:
+            if col not in ['artist', 'decade_of_release']:
+                input_df[col] = pd.to_numeric(input_df[col], errors='coerce')
+
+        input_df = input_df.fillna(0.0)
+
+        # --- Предсказание ---
         predictions = pipeline.predict(input_df)
         probabilities = pipeline.predict_proba(input_df)
 
-        # Формирование результата
-        results = []
-        for i in range(len(predictions)):
-            results.append({
+        results = [
+            {
+                "track": request.items[i].track,
                 "prediction": int(predictions[i]),
-                "probabilities": probabilities[i].tolist(),
-                "track": request.items[i].track  # Возвращаем исходное название
-            })
+                "probabilities": probabilities[i].tolist()
+            }
+            for i in range(len(predictions))
+        ]
 
         return {"results": results}
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Batch prediction error: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Batch prediction error: {e}")
 
 
 # Health check эндпоинт
