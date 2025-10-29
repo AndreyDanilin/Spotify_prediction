@@ -69,11 +69,9 @@ app = FastAPI(
 )
 
 
-# Модель для валидации входных данных
 class TrackRequest(BaseModel):
     artist: str
-    track: str
-    decade_of_release: int
+    decade_of_release: str
     danceability: float
     energy: float
     key: int
@@ -89,6 +87,10 @@ class TrackRequest(BaseModel):
     time_signature: int
     chorus_hit: float
     sections: int
+    track_emb: List[float]
+
+class BatchRequest(BaseModel):
+    items: List[TrackRequest]
 
 
 class BatchRequest(BaseModel):
@@ -98,100 +100,53 @@ class BatchRequest(BaseModel):
 @app.post("/predict")
 async def predict(request: TrackRequest):
     try:
-        input_df = pd.DataFrame([request.dict()])
-        input_df['decade_of_release'] = input_df['decade_of_release'].apply(normalize_decade)
-        # --- Добавляем эмбеддинги ---
-        track_embedding = sentence_model.encode(
-            input_df['track'].values,
-            show_progress_bar=False
-        )
-        for i in range(track_embedding.shape[1]):
-            input_df[f'track_emb_{i}'] = track_embedding[:, i]
+        # Преобразуем входные данные в DataFrame
+        input_data = request.dict()
+        # Если track_emb упакован в список, развернем его
+        if isinstance(input_data.get('track_emb'), list):
+            for i, v in enumerate(input_data['track_emb']):
+                input_data[f'track_emb_{i}'] = v
+            del input_data['track_emb']
+        input_df = pd.DataFrame([input_data])
 
-        input_df = input_df.drop(columns=['track'])
-
-        # --- Обеспечиваем наличие нужных колонок ---
-        if 'artist' not in input_df.columns:
-            input_df['artist'] = 'unknown_artist'
-        if 'decade_of_release' not in input_df.columns:
-            input_df['decade_of_release'] = 'unknown_decade'
-
-        # --- Преобразуем типы ---
-        input_df['artist'] = input_df['artist'].astype(str)
-        input_df['decade_of_release'] = input_df['decade_of_release'].astype(str)
-
-        # Все остальные — числа
-        for col in input_df.columns:
-            if col not in ['artist', 'decade_of_release']:
-                input_df[col] = pd.to_numeric(input_df[col], errors='coerce')
-
-        input_df = input_df.fillna(0.0)
-
-        # --- Предсказание ---
+        # --- Единственный шаг обработки: вызов pipeline ---
         prediction = pipeline.predict(input_df)
         probabilities = pipeline.predict_proba(input_df)
 
         return {
             "prediction": int(prediction[0]),
             "probabilities": probabilities[0].tolist(),
-            "track_embedding_dim": int(track_embedding.shape[1]),
-            "input_shape": input_df.shape   
+            "input_shape": input_df.shape
         }
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
-
 
 
 # --- Эндпоинт для пакетного предсказания ---
 @app.post("/batch_predict")
 async def batch_predict(request: BatchRequest):
     try:
-        input_data = [item.dict() for item in request.items]
+        input_data = []
+        for item in request.items:
+            d = item.dict()
+            # Если track_emb — список, развернем в отдельные столбцы
+            if isinstance(d.get('track_emb'), list):
+                for i, v in enumerate(d['track_emb']):
+                    d[f'track_emb_{i}'] = v
+                del d['track_emb']
+            input_data.append(d)
         input_df = pd.DataFrame(input_data)
-        input_df['decade_of_release'] = input_df['decade_of_release'].apply(normalize_decade)
-
-        # --- Добавляем эмбеддинги ---
-        track_embeddings = sentence_model.encode(
-            input_df['track'].values,
-            show_progress_bar=False,
-            batch_size=32
-        )
-        for i in range(track_embeddings.shape[1]):
-            input_df[f'track_emb_{i}'] = track_embeddings[:, i]
-
-        input_df = input_df.drop(columns=['track'])
-
-        # --- Гарантируем наличие колонок ---
-        if 'artist' not in input_df.columns:
-            input_df['artist'] = 'unknown_artist'
-        if 'decade_of_release' not in input_df.columns:
-            input_df['decade_of_release'] = 'unknown_decade'
-
-        # --- Типы ---
-        input_df['artist'] = input_df['artist'].astype(str)
-        input_df['decade_of_release'] = input_df['decade_of_release'].astype(str)
-        for col in input_df.columns:
-            if col not in ['artist', 'decade_of_release']:
-                input_df[col] = pd.to_numeric(input_df[col], errors='coerce')
-
-        input_df = input_df.fillna(0.0)
-
-        # --- Предсказание ---
         predictions = pipeline.predict(input_df)
         probabilities = pipeline.predict_proba(input_df)
 
         results = [
             {
-                "track": request.items[i].track,
                 "prediction": int(predictions[i]),
                 "probabilities": probabilities[i].tolist()
             }
             for i in range(len(predictions))
         ]
-
         return {"results": results}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Batch prediction error: {e}")
 
