@@ -1,142 +1,118 @@
 <div align="center">
 
-# 🎵 Spotify Hit Prediction
+# Spotify Hit Prediction
 
-**Predicting Spotify hits using Machine Learning**
-
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.68+-green.svg)](https://fastapi.tiangolo.com)
-[![XGBoost](https://img.shields.io/badge/XGBoost-1.5+-orange.svg)](https://xgboost.readthedocs.io)
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com)
-
-<img src="assets/spotify_logo.png" alt="Spotify Logo" width="200"/>
+Predict Spotify hits with a reproducible Polars + ML pipeline and a Litestar API.
 
 </div>
 
-## 📋 About the Project
+## What Changed In v2
 
-This project is a comprehensive solution for predicting musical hits based on Spotify data. The project includes data exploration, training of various machine learning models, and deployment of a web API for practical use.
+- API migrated from FastAPI to **Litestar**.
+- Data loading and feature assembly are **Polars-first**.
+- The API accepts `track` and computes text embeddings internally; clients no longer need to send `track_emb`.
+- `pipeline_generator.py` now delegates to a model-selection runner that compares candidates by ROC-AUC and saves the best artifact.
+- Dependencies are managed with `pyproject.toml` and uv extras:
+  - `dev` for lightweight tests.
+  - `api` for serving inside Docker.
+  - `train` for full retraining and ensemble experiments.
+  - `notebook` for notebook execution.
 
-### 🎯 Main Objectives
+## Project Structure
 
-- **Data Analysis**: Research on musical characteristics that influence track popularity
-- **Modeling**: Comparison of various machine learning algorithms to select the optimal one
-- **Production**: Creation of a ready-to-use API for hit prediction
-
-### 📊 Data Source
-
-Data is sourced from [Kaggle Dataset](https://www.kaggle.com/theoverman/the-spotify-hit-predictor-dataset) and contains musical characteristics of tracks from 1960 to 2019.
-
-## 🏗️ Project Structure
-
-```
+```text
 Spotify_prediction/
-├── 📓 Spotify_prediction.ipynb    # Main notebook with analysis and training
-├── 📄 Research_report.md          # Detailed research report
-├── 🌐 music-classifier/           # FastAPI application
-│   ├── app/                       # Main API code
-│   ├── Dockerfile                 # Docker configuration
-│   ├── docker-compose.yml         # Docker Compose settings
-│   └── requirements.txt           # Python dependencies
-├── 📁 data/                       # Source data
-└── 📁 assets/                     # Images and resources
+├── src/spotify_prediction/       # Package: features, training, model service, Litestar API
+├── music-classifier/             # Docker/API wrapper and smoke test
+├── data/                         # Kaggle Spotify hit predictor CSV files
+├── Spotify_prediction.ipynb      # Research notebook with v2 ensemble section
+├── pipeline_generator.py         # Compatibility training entrypoint
+├── pyproject.toml                # Python 3.12 dependency groups
+└── tests/                        # Lightweight unit/API tests
 ```
 
-## 🚀 Quick Start
+## Local Development
 
-### 1. 📊 Data Analysis
-
-Open the main notebook to explore the research:
 ```bash
-jupyter notebook Spotify_prediction.ipynb
+uv run --extra dev pytest -q -s
 ```
 
-### 2. 🌐 API Launch
+The `-s` flag avoids a pytest capture issue on some WSL-mounted Windows paths.
 
-#### Local Launch
+## Train The Model
+
+Full training uses the heavier ML stack:
+
+```bash
+uv run --extra train spotify-train --data-dir data --output music-classifier/app/model.joblib
+```
+
+The runner:
+
+1. Loads decade CSVs with Polars.
+2. Drops duplicate Spotify URIs.
+3. Builds SentenceTransformer embeddings for track names.
+4. Adds compact audio interaction features.
+5. Compares candidate single models and a soft-voting ensemble by stratified CV ROC-AUC.
+6. Saves `model.joblib` and `model.metadata.json`.
+
+## Run The API
+
+```bash
+uv run --extra api uvicorn spotify_prediction.api:app --host 0.0.0.0 --port 8000
+```
+
+Endpoints:
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/health` | Model and embedding status |
+| POST | `/predict` | Single track prediction |
+| POST | `/batch_predict` | Batch prediction |
+
+Example request:
+
+```json
+{
+  "track": "Hey Jude",
+  "artist": "The Beatles",
+  "decade_of_release": 1968,
+  "danceability": 0.5,
+  "energy": 0.7,
+  "key": 7,
+  "loudness": -8.5,
+  "mode": 1,
+  "speechiness": 0.03,
+  "acousticness": 0.2,
+  "instrumentalness": 0.0,
+  "liveness": 0.1,
+  "valence": 0.8,
+  "tempo": 120.0,
+  "duration_ms": 431000,
+  "time_signature": 4,
+  "chorus_hit": 0.5,
+  "sections": 8
+}
+```
+
+## Docker
+
+Serving dependencies are intentionally kept inside the image:
+
 ```bash
 cd music-classifier
-pip install -r requirements.txt
-python app/main.py
+docker compose up --build app
 ```
 
-#### Docker Launch
+To retrain in a container profile:
+
 ```bash
 cd music-classifier
-docker-compose up --build
+docker compose --profile train run --build trainer
 ```
 
-API will be available at: `http://localhost:8000`
+This split keeps local and CI feedback light while still giving a reproducible heavy ML environment when needed.
 
-### 3. 🧪 API Testing
-```bash
-cd music-classifier
-python test_api.py
-```
+## Research
 
-## 🔬 Methodology
-
-### Machine Learning Algorithms
-- **XGBoost** (main model) - gradient boosting
-- **Random Forest** - ensemble of decision trees  
-- **Logistic Regression** - logistic regression
-- **Neural Networks** - neural networks with PyTorch
-- **SVM** - support vector machines
-- **CatBoost** - gradient boosting by Yandex
-
-### Data Processing
-- **BERT embeddings** for track names and artists
-- **Feature engineering** for musical characteristics
-- **Cross-validation** for model quality assessment
-- **Hyperparameter optimization** with Optuna
-
-## 📈 Results
-
-- **Best model**: XGBoost with accuracy > 96%
-- **Important features**: danceability, energy, valence, tempo
-- **Time coverage**: 60 years of musical history (1960-2019)
-
-## 🔧 Technology Stack
-
-### Data Science
-- **Python** - main programming language
-- **Pandas** - data processing
-- **NumPy** - numerical computations
-- **Scikit-learn** - machine learning
-- **XGBoost** - gradient boosting
-- **PyTorch** - deep learning
-
-### API and Deployment
-- **FastAPI** - modern web framework
-- **Docker** - containerization
-- **Uvicorn** - ASGI server
-- **Pydantic** - data validation
-
-### Visualization
-- **Matplotlib** - basic plots
-- **Seaborn** - statistical visualization
-- **Plotly** - interactive plots
-
-## 📚 Documentation
-
-- **[📓 Main Research](Spotify_prediction.ipynb)** - complete data analysis and model training
-- **[📄 Research Report](Research_report.md)** - detailed description of methodology and results
-- **[🌐 API Documentation](music-classifier/README.md)** - API usage guide
-
-## 🔗 API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | API and model status check |
-| `/predict` | POST | Single track prediction |
-| `/batch_predict` | POST | Batch prediction |
-
-## 🤝 Contributing
-
-This project was created for educational purposes to demonstrate data science skills and ML solution development. Suggestions for improvements are welcome!
-
-## 📄 License
-
-This project is distributed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
-
----
+`Spotify_prediction.ipynb` keeps the historical analysis and adds a final v2 Polars-first ensemble section. The production trainer and notebook now share the same package functions, so research and serving do not drift as easily.
