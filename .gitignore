@@ -1,12 +1,7 @@
 .idea
 catboost_info
-.venv
+.venv/
 __pycache__/
-.pytest_cache/
-.ipynb_checkpoints/
-.worktrees/
-*.pyc
-*.pyo
-*.metadata.json
-music-classifier/app/model.joblib
+*.py[cod]
+.hf-cache/
 artifacts/

@@ -2,21 +2,28 @@
 
 # Spotify Hit Prediction
 
-Predict Spotify hits with a reproducible Polars + ML pipeline and a Litestar API.
+**Predicting Spotify hits using Machine Learning**
+
+[![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-green.svg)](https://fastapi.tiangolo.com)
+[![XGBoost](https://img.shields.io/badge/XGBoost-3.2.0-orange.svg)](https://xgboost.readthedocs.io)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com)
+
+<img src="assets/spotify_logo.png" alt="Spotify Logo" width="200"/>
 
 </div>
 
-## What Changed In v2
+## 📋 About the Project
 
-- API migrated from FastAPI to **Litestar**.
-- Data loading and feature assembly are **Polars-first**.
-- The API accepts `track` and computes text embeddings internally; clients no longer need to send `track_emb`.
-- `pipeline_generator.py` now delegates to a model-selection runner that compares candidates by ROC-AUC and saves the best artifact.
-- Dependencies are managed with `pyproject.toml` and uv extras:
-  - `dev` for lightweight tests.
-  - `api` for serving inside Docker.
-  - `train` for full retraining and ensemble experiments.
-  - `notebook` for notebook execution.
+This project is a comprehensive solution for predicting musical hits based on Spotify data. The project includes data exploration, training of various machine learning models, and deployment of a web API for practical use.
+
+The project now targets **Python 3.13** for notebook work, training, and API deployment.
+
+### 🎯 Main Objectives
+
+- **Data Analysis**: Research on musical characteristics that influence track popularity
+- **Modeling**: Comparison of various machine learning algorithms to select the optimal one
+- **Production**: Creation of a ready-to-use API backed by a trained weighted ensemble
 
 ## Project Structure
 
@@ -34,12 +41,44 @@ Spotify_prediction/
 ## Local Development
 
 ```bash
-uv run --extra dev pytest -q -s
+python -V  # expected: Python 3.13.x
+jupyter notebook Spotify_prediction.ipynb
 ```
 
 The `-s` flag avoids a pytest capture issue on some WSL-mounted Windows paths.
 
-## Train The Model
+Generate the ensemble artifact before starting the API:
+```bash
+python pipeline_generator.py \
+  --hf-home .hf-cache \
+  --tabm-device cuda \
+  --tree-device cuda
+```
+
+For a repeat run after the Hugging Face embedding model is already cached:
+```bash
+python pipeline_generator.py \
+  --hf-home .hf-cache \
+  --offline-embeddings \
+  --tabm-device cuda \
+  --tree-device cuda
+```
+
+The script writes `music-classifier/app/hit_ensemble.joblib` and caches generated training features at `artifacts/training_features.joblib`.
+
+#### Local Launch
+```bash
+python -V  # expected: Python 3.13.x
+cd music-classifier
+pip install -r requirements.txt
+python app/main.py
+```
+
+#### Docker Launch
+```bash
+cd music-classifier
+docker-compose up --build
+```
 
 Full training uses the heavier ML stack:
 
@@ -47,20 +86,53 @@ Full training uses the heavier ML stack:
 uv run --extra train spotify-train --data-dir data --output music-classifier/app/model.joblib
 ```
 
-The runner:
+## 🔬 Methodology
 
-1. Loads decade CSVs with Polars.
-2. Drops duplicate Spotify URIs.
-3. Builds SentenceTransformer embeddings for track names.
-4. Adds compact audio interaction features.
-5. Compares candidate single models and a soft-voting ensemble by stratified CV ROC-AUC.
-6. Saves `model.joblib` and `model.metadata.json`.
+### Machine Learning Algorithms
+- **Weighted Soft-Voting Ensemble** (main model) - combines the strongest validation models by ROC-AUC
+- **XGBoost** - gradient boosting
+- **Random Forest** - ensemble of decision trees
+- **Logistic Regression** - logistic regression
+- **TabM** - parameter-efficient neural ensemble for tabular data
+- **SVM** - support vector machines
+- **CatBoost** - gradient boosting by Yandex
+
+### Data Processing
+- **BERT embeddings** for track names
+- **Feature cache** for reusable track embeddings and generated model features
+- **Feature engineering** for musical characteristics
+- **Cross-validation** for model quality assessment
+- **Hyperparameter optimization** with Optuna
+- **Weighted soft voting** using validation ROC-AUC for model selection and weights
+
+## 📈 Results
+
+- **Best model**: weighted ensemble selected by ROC-AUC
+- **Important features**: danceability, energy, valence, tempo
+- **Time coverage**: 60 years of musical history (1960-2019)
 
 ## Run The API
 
-```bash
-uv run --extra api uvicorn spotify_prediction.api:app --host 0.0.0.0 --port 8000
-```
+### Data Science
+- **Python** - main programming language
+- **Pandas** - data processing
+- **NumPy** - numerical computations
+- **Scikit-learn** - machine learning
+- **XGBoost** - gradient boosting
+- **CatBoost** - gradient boosting
+- **TabM / PyTorch** - tabular neural modeling
+- **Polars** - optional fast CSV loading before pandas/numpy/torch conversion
+
+### API and Deployment
+- **FastAPI** - modern web framework
+- **Docker** - containerization
+- **Uvicorn** - ASGI server
+- **Pydantic** - data validation
+
+### Visualization
+- **Matplotlib** - basic plots
+- **Seaborn** - statistical visualization
+- **Plotly** - interactive plots
 
 Endpoints:
 
@@ -95,7 +167,10 @@ Example request:
 }
 ```
 
-## Docker
+- **[📓 Main Research](Spotify_prediction.ipynb)** - complete data analysis and model training
+- **[📄 Research Report](Research_report.md)** - detailed description of methodology and results
+- **[🌐 API Documentation](music-classifier/README.md)** - API usage guide
+- **[⚙️ Training Entry Point](pipeline_generator.py)** - canonical retraining script for `hit_ensemble.joblib`
 
 Serving dependencies are intentionally kept inside the image:
 

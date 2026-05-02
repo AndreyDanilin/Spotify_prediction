@@ -1,6 +1,4 @@
-FROM python:3.12-slim
-
-ARG INSTALL_EXTRAS=api
+FROM python:3.13-slim
 
 WORKDIR /app
 
@@ -11,14 +9,14 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml uv.lock Readme.md ./
-COPY src ./src
-COPY data ./data
-COPY music-classifier/app ./music-classifier/app
-COPY music-classifier/scripts ./music-classifier/scripts
+COPY music-classifier/requirements.txt .
 
 RUN pip install --no-cache-dir ".[${INSTALL_EXTRAS}]"
 
-EXPOSE 8000
+COPY spotify_hit_model/ ./spotify_hit_model/
+COPY music-classifier/app/ ./app/
+COPY music-classifier/scripts/ ./scripts/
 
-CMD ["uvicorn", "spotify_prediction.api:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
+WORKDIR /app/app
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]

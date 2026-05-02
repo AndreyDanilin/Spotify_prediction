@@ -3,8 +3,6 @@ services:
     build:
       context: ..
       dockerfile: music-classifier/Dockerfile
-      args:
-        INSTALL_EXTRAS: api
     container_name: music-classifier
     restart: unless-stopped
     ports:
@@ -17,14 +15,3 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  trainer:
-    profiles: ["train"]
-    build:
-      context: ..
-      dockerfile: music-classifier/Dockerfile
-      args:
-        INSTALL_EXTRAS: train
-    command: ["spotify-train", "--data-dir", "data", "--output", "music-classifier/app/model.joblib"]
-    volumes:
-      - ./app:/app/music-classifier/app

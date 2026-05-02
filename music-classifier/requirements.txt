@@ -1,3 +1,21 @@
-# Compatibility file for users who still prefer pip.
-# From music-classifier/: pip install -r requirements.txt
--e ..[api]
+pandas==3.0.2
+polars==1.40.1
+joblib==1.5.3
+numpy==2.4.4
+uvicorn==0.46.0
+fastapi==0.136.1
+pydantic==2.13.3
+sentence-transformers==5.4.1
+seaborn==0.13.2
+matplotlib==3.10.9
+torch==2.11.0
+tabm==0.0.3
+rtdl_num_embeddings==0.0.12
+xgboost==3.2.0
+optuna==4.8.0
+catboost==1.2.10
+scikit-learn==1.8.0
+python-multipart>=0.0.20,<0.1
+python-dotenv>=1.1,<2
+huggingface-hub==1.13.0
+transformers==5.7.0
