@@ -1,10 +1,12 @@
 # Music Classifier API
 
-An API for classifying music tracks using BERT embeddings and XGBoost model.
+An API for classifying music tracks using BERT embeddings and a weighted ensemble model.
 
 ## Description
 
-This project is a web API for predicting music characteristics based on audio features and track names. The API uses a pre-trained XGBoost model and BERT embeddings for text processing.
+This project is a web API for predicting music hit probability from audio features and track names. The API computes track-name embeddings internally and uses a pre-trained weighted soft-voting ensemble.
+
+The supported runtime target is **Python 3.13**.
 
 ## Features
 
@@ -20,7 +22,7 @@ music-classifier/
 ├── app/
 │ ├── main.py # Main FastAPI application
 │ ├── config.py # Application configuration
-│ └── xgb_pipe.joblib # Pre-trained model
+│ └── hit_ensemble.joblib # Pre-trained weighted ensemble
 ├── scripts/
 │ └── start.sh # Server startup script
 ├── test_api.py # Test script
@@ -32,10 +34,23 @@ music-classifier/
 
 ## Quick Start
 
+The API expects `app/hit_ensemble.joblib`. Build it from the repository root before starting the server:
+
+```bash
+python pipeline_generator.py \
+  --hf-home .hf-cache \
+  --offline-embeddings \
+  --tabm-device cuda \
+  --tree-device cuda
+```
+
+Omit `--offline-embeddings` on the first run if the `all-MiniLM-L6-v2` embedding model is not cached yet.
+
 ### Local Launch
 
 1. **Install dependencies:**
    ```bash
+   python -V  # expected: Python 3.13.x
    cd music-classifier
    pip install -r requirements.txt
    ```
@@ -76,7 +91,8 @@ Test of python app/main.py and loaded models.
 {
   "status": "OK",
   "model_loaded": true,
-  "embedding_model_loaded": true
+  "embedding_model_loaded": true,
+  "model_version": "2.0"
 }
 ```
 
@@ -114,6 +130,7 @@ POST /predict
 {
   "prediction": 1,
   "probabilities": [0.2, 0.8],
+  "model_version": "2.0",
   "track_embedding_dim": 384
 }
 ```
@@ -158,7 +175,8 @@ POST /batch_predict
     {
       "prediction": 0,
       "probabilities": [0.7, 0.3],
-      "track": "Bohemian Rhapsody"
+      "track": "Bohemian Rhapsody",
+      "model_version": "2.0"
     }
   ]
 }
@@ -176,9 +194,9 @@ POST /batch_predict
 | `key` | integer | Musical key (0-11) |
 | `loudness` | float | Loudness in dB |
 | `mode` | integer | Mode (0=minor, 1=major) |
-| `speechiness` | float | Speechiness (0.0-1.0) |
+| `speechiness` | float | Accepted for compatibility, ignored by the trained model |
 | `acousticness` | float | Acousticness (0.0-1.0) |
-| `instrumentalness` | float | Instrumentalness (0.0-1.0) |
+| `instrumentalness` | float | Accepted for compatibility, ignored by the trained model |
 | `liveness` | float | Liveness (0.0-1.0) |
 | `valence` | float | Positivity (0.0-1.0) |
 | `tempo` | float | Tempo in BPM |
@@ -200,13 +218,16 @@ python test_api.py
 The API includes a health check endpoint for status monitoring:
 - ML model loading verification
 - Embedding model loading verification
+- Model version
 - Overall application status
 
 ## Technologies
 
 - **FastAPI** - Web framework for API creation
-- **XGBoost** - Gradient boosting for machine learning
+- **Weighted ensemble** - Soft voting over the best validation models
+- **XGBoost / CatBoost / Logistic Regression / TabM** - Candidate model families
 - **Sentence Transformers** - BERT embeddings for text
+- **Python 3.13** - target runtime for local and containerized deployment
 - **Pandas** - Data processing
 - **Docker** - Containerization
 - **Uvicorn** - ASGI server

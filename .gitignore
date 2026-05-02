@@ -1,2 +1,7 @@
 .idea
 catboost_info
+.venv/
+__pycache__/
+*.py[cod]
+.hf-cache/
+artifacts/

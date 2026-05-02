@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: ..
+      dockerfile: music-classifier/Dockerfile
     container_name: music-classifier
     restart: unless-stopped
     ports:

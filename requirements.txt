@@ -1,0 +1,16 @@
+pandas==3.0.2
+polars==1.40.1
+numpy==2.4.4
+scikit-learn==1.8.0
+xgboost==3.2.0
+catboost==1.2.10
+tabm==0.0.3
+rtdl_num_embeddings==0.0.12
+torch==2.11.0
+sentence-transformers==5.4.1
+transformers==5.7.0
+huggingface-hub==1.13.0
+optuna==4.8.0
+joblib==1.5.3
+matplotlib==3.10.9
+seaborn==0.13.2

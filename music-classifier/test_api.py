@@ -28,7 +28,7 @@ def test_health_check():
 def test_single_prediction():
     """Тест одиночного предсказания"""
     print("\nТестирование одиночного предсказания...")
-    
+
     # Тестовые данные
     test_data = {
         "artist": "The Beatles",
@@ -50,26 +50,27 @@ def test_single_prediction():
         "chorus_hit": 0.5,
         "sections": 8
     }
-    
+
     try:
         response = requests.post(
             f"{BASE_URL}/predict",
             json=test_data,
             headers={"Content-Type": "application/json"}
         )
-        
+
         if response.status_code == 200:
             result = response.json()
             print(f"Предсказание успешно:")
             print(f"   - Предсказанный класс: {result['prediction']}")
             print(f"   - Вероятности: {result['probabilities']}")
+            print(f"   - Версия модели: {result['model_version']}")
             print(f"   - Размерность эмбеддинга: {result['track_embedding_dim']}")
             return True
         else:
             print(f"Ошибка предсказания: {response.status_code}")
             print(f"   Ответ: {response.text}")
             return False
-            
+
     except Exception as e:
         print(f"Ошибка при предсказании: {e}")
         return False
@@ -77,7 +78,7 @@ def test_single_prediction():
 def test_batch_prediction():
     """Тест пакетного предсказания"""
     print("\nТестирование пакетного предсказания...")
-    
+
     # Тестовые данные для пакетной обработки
     test_data = {
         "items": [
@@ -123,14 +124,14 @@ def test_batch_prediction():
             }
         ]
     }
-    
+
     try:
         response = requests.post(
             f"{BASE_URL}/batch_predict",
             json=test_data,
             headers={"Content-Type": "application/json"}
         )
-        
+
         if response.status_code == 200:
             result = response.json()
             print(f"Пакетное предсказание успешно:")
@@ -138,12 +139,13 @@ def test_batch_prediction():
                 print(f"   Трек {i+1} ({item['track']}):")
                 print(f"     - Предсказанный класс: {item['prediction']}")
                 print(f"     - Вероятности: {item['probabilities']}")
+                print(f"     - Версия модели: {item['model_version']}")
             return True
         else:
             print(f"Ошибка пакетного предсказания: {response.status_code}")
             print(f"   Ответ: {response.text}")
             return False
-            
+
     except Exception as e:
         print(f"Ошибка при пакетном предсказании: {e}")
         return False
@@ -152,28 +154,28 @@ def main():
     """Основная функция тестирования"""
     print("Запуск тестов Music Classifier API")
     print("=" * 50)
-    
+
     # Ждем немного, чтобы сервер успел запуститься
     print("Ожидание запуска сервера...")
     time.sleep(3)
-    
+
     # Запуск тестов
     tests = [
         test_health_check,
         test_single_prediction,
         test_batch_prediction
     ]
-    
+
     passed = 0
     total = len(tests)
-    
+
     for test in tests:
         if test():
             passed += 1
-    
+
     print("\n" + "=" * 50)
     print(f"Результаты тестирования: {passed}/{total} тестов пройдено")
-    
+
     if passed == total:
         print("Все тесты пройдены успешно!")
         return True

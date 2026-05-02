@@ -1,77 +1,63 @@
-# main.py
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import pandas as pd
-import joblib
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from typing import List, Dict, Any
-import uvicorn
+from __future__ import annotations
 
-# Глобальные переменные для моделей
+import sys
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import List
+
+import joblib
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, ConfigDict
+
+for candidate in (Path.cwd(), *Path(__file__).resolve().parents):
+    if (candidate / "spotify_hit_model").exists():
+        if str(candidate) not in sys.path:
+            sys.path.insert(0, str(candidate))
+        break
+
+from config import MODEL_PATH, settings
+from spotify_hit_model.embeddings import build_inference_frame, load_sentence_model
+from spotify_hit_model.schema import prepare_model_records
+
+
 pipeline = None
 sentence_model = None
 
-# --- Приведение decade_of_release к обученному формату ---
-def normalize_decade(value):
-    # если значение числовое — сокращаем до десятилетия
-    try:
-        val = int(value)
-        if val >= 1960 and val < 1970:
-            return '60'
-        elif val >= 1970 and val < 1980:
-            return '70'
-        elif val >= 1980 and val < 1990:
-            return '80'
-        elif val >= 1990 and val < 2000:
-            return '90'
-        elif val >= 2000 and val < 2010:
-            return '0'
-        elif val >= 2010 and val < 2020:
-            return '10'
-        else:
-            return 'unknown'
-    except Exception:
-        # если уже строка, возвращаем как есть
-        return str(value)
 
-# Загрузка моделей при старте приложения
 @asynccontextmanager
 async def lifespan(app):
     global pipeline, sentence_model
 
     try:
-        # Загрузка предварительно обученного pipeline
-        pipeline = joblib.load('xgb_pipe.joblib')
-        print("✅ Pipeline successfully loaded")
+        pipeline = joblib.load(MODEL_PATH)
+        print(f"Pipeline successfully loaded from {MODEL_PATH}")
 
-        # Загрузка модели для эмбеддингов текста
-        sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
-        print("✅ Sentence Transformer model loaded")
+        sentence_model = load_sentence_model(settings.EMBEDDING_MODEL)
+        print(f"Sentence Transformer model loaded: {settings.EMBEDDING_MODEL}")
+    except Exception as exc:
+        print(f"Error loading models: {exc}")
+        raise RuntimeError("Model loading failed") from exc
 
-    except Exception as e:
-        print(f"❌ Error loading models: {e}")
-        raise RuntimeError("Model loading failed") from e
+    yield
 
-    yield  # Приложение запущено
-
-    # Очистка ресурсов при завершении
-    print("🔄 Shutting down application...")
+    print("Shutting down application...")
 
 
-# Инициализация приложения
 app = FastAPI(
     title="Music Track Classifier API",
-    description="API для классификации музыкальных треков с использованием BERT-эмбеддингов и ML-модели",
-    version="1.0",
-    lifespan=lifespan
+    description="API for Spotify hit prediction with a weighted ensemble model",
+    version=settings.MODEL_VERSION,
+    lifespan=lifespan,
 )
 
 
 class TrackRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     artist: str
-    decade_of_release: str
+    track: str
+    decade_of_release: str | int
     danceability: float
     energy: float
     key: int
@@ -87,81 +73,87 @@ class TrackRequest(BaseModel):
     time_signature: int
     chorus_hit: float
     sections: int
-    track_emb: List[float]
-
-class BatchRequest(BaseModel):
-    items: List[TrackRequest]
 
 
 class BatchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     items: List[TrackRequest]
 
 
 @app.post("/predict")
 async def predict(request: TrackRequest):
     try:
-        # Преобразуем входные данные в DataFrame
-        input_data = request.dict()
-        # Если track_emb упакован в список, развернем его
-        if isinstance(input_data.get('track_emb'), list):
-            for i, v in enumerate(input_data['track_emb']):
-                input_data[f'track_emb_{i}'] = v
-            del input_data['track_emb']
-        input_df = pd.DataFrame([input_data])
-
-        # --- Единственный шаг обработки: вызов pipeline ---
-        prediction = pipeline.predict(input_df)
-        probabilities = pipeline.predict_proba(input_df)
+        frame = _build_prediction_frame([_dump_model(request)])
+        probabilities = pipeline.predict_proba(frame)
+        prediction = pipeline.predict(frame)
+        probability_row = _probability_rows(probabilities)[0]
 
         return {
             "prediction": int(prediction[0]),
-            "probabilities": probabilities[0].tolist(),
-            "input_shape": input_df.shape
+            "probabilities": probability_row,
+            "model_version": _model_version(),
+            "track_embedding_dim": _track_embedding_dim(frame),
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Prediction error: {exc}") from exc
 
 
-# --- Эндпоинт для пакетного предсказания ---
 @app.post("/batch_predict")
 async def batch_predict(request: BatchRequest):
     try:
-        input_data = []
-        for item in request.items:
-            d = item.dict()
-            # Если track_emb — список, развернем в отдельные столбцы
-            if isinstance(d.get('track_emb'), list):
-                for i, v in enumerate(d['track_emb']):
-                    d[f'track_emb_{i}'] = v
-                del d['track_emb']
-            input_data.append(d)
-        input_df = pd.DataFrame(input_data)
-        predictions = pipeline.predict(input_df)
-        probabilities = pipeline.predict_proba(input_df)
+        raw_items = [_dump_model(item) for item in request.items]
+        frame = _build_prediction_frame(raw_items)
+        predictions = pipeline.predict(frame)
+        probabilities = _probability_rows(pipeline.predict_proba(frame))
 
         results = [
             {
-                "prediction": int(predictions[i]),
-                "probabilities": probabilities[i].tolist()
+                "track": raw_items[index]["track"],
+                "prediction": int(predictions[index]),
+                "probabilities": probabilities[index],
+                "model_version": _model_version(),
             }
-            for i in range(len(predictions))
+            for index in range(len(raw_items))
         ]
         return {"results": results}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Batch prediction error: {e}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Batch prediction error: {exc}") from exc
 
 
-# Health check эндпоинт
 @app.get("/health")
 async def health_check():
     return {
         "status": "OK",
-        "model_loaded": hasattr(pipeline, "predict"),
-        "embedding_model_loaded": hasattr(sentence_model, "encode")
+        "model_loaded": hasattr(pipeline, "predict") and hasattr(pipeline, "predict_proba"),
+        "embedding_model_loaded": hasattr(sentence_model, "encode"),
+        "model_version": _model_version(),
     }
 
 
-# Запуск сервера
+def _build_prediction_frame(raw_items):
+    prepared_records = prepare_model_records(raw_items)
+    return build_inference_frame(prepared_records, sentence_model)
+
+
+def _dump_model(model: BaseModel) -> dict:
+    return model.model_dump() if hasattr(model, "model_dump") else model.dict()
+
+
+def _probability_rows(probabilities):
+    if hasattr(probabilities, "tolist"):
+        probabilities = probabilities.tolist()
+    return [[float(value) for value in row] for row in probabilities]
+
+
+def _track_embedding_dim(frame) -> int:
+    return sum(1 for column in frame.columns if str(column).startswith("track_emb_"))
+
+
+def _model_version() -> str:
+    return str(getattr(pipeline, "model_version", settings.MODEL_VERSION))
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
@@ -169,5 +161,5 @@ if __name__ == "__main__":
         port=8000,
         reload=True,
         log_level="info",
-        timeout_keep_alive=120
+        timeout_keep_alive=120,
     )
