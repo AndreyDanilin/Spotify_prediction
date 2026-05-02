@@ -301,7 +301,6 @@ def fit_candidate_models(
         candidate_factories["catboost"] = lambda: CatBoostClassifier(
             learning_rate=0.08765108142833057,
             depth=7,
-            subsample=0.42624958898274057,
             colsample_bylevel=0.4159606439575746,
             min_data_in_leaf=1,
             logging_level="Silent",
