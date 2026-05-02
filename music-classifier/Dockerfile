@@ -2,13 +2,16 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc python3-dev curl && \
-    rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc g++ curl \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY music-classifier/requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir ".[${INSTALL_EXTRAS}]"
 
 COPY spotify_hit_model/ ./spotify_hit_model/
 COPY music-classifier/app/ ./app/

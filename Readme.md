@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎵 Spotify Hit Prediction
+# Spotify Hit Prediction
 
 **Predicting Spotify hits using Machine Learning**
 
@@ -25,36 +25,27 @@ The project now targets **Python 3.13** for notebook work, training, and API dep
 - **Modeling**: Comparison of various machine learning algorithms to select the optimal one
 - **Production**: Creation of a ready-to-use API backed by a trained weighted ensemble
 
-### 📊 Data Source
+## Project Structure
 
-Data is sourced from [Kaggle Dataset](https://www.kaggle.com/theoverman/the-spotify-hit-predictor-dataset) and contains musical characteristics of tracks from 1960 to 2019.
-
-## 🏗️ Project Structure
-
-```
+```text
 Spotify_prediction/
-├── 📓 Spotify_prediction.ipynb    # Main notebook with analysis and training
-├── 📄 Research_report.md          # Detailed research report
-├── 🌐 music-classifier/           # FastAPI application
-│   ├── app/                       # Main API code
-│   ├── Dockerfile                 # Docker configuration
-│   ├── docker-compose.yml         # Docker Compose settings
-│   └── requirements.txt           # Python dependencies
-├── 📁 data/                       # Source data
-└── 📁 assets/                     # Images and resources
+├── src/spotify_prediction/       # Package: features, training, model service, Litestar API
+├── music-classifier/             # Docker/API wrapper and smoke test
+├── data/                         # Kaggle Spotify hit predictor CSV files
+├── Spotify_prediction.ipynb      # Research notebook with v2 ensemble section
+├── pipeline_generator.py         # Compatibility training entrypoint
+├── pyproject.toml                # Python 3.12 dependency groups
+└── tests/                        # Lightweight unit/API tests
 ```
 
-## 🚀 Quick Start
+## Local Development
 
-### 1. 📊 Data Analysis
-
-Open the main notebook to explore the research:
 ```bash
 python -V  # expected: Python 3.13.x
 jupyter notebook Spotify_prediction.ipynb
 ```
 
-### 2. 🌐 API Launch
+The `-s` flag avoids a pytest capture issue on some WSL-mounted Windows paths.
 
 Generate the ensemble artifact before starting the API:
 ```bash
@@ -89,12 +80,10 @@ cd music-classifier
 docker-compose up --build
 ```
 
-API will be available at: `http://localhost:8000`
+Full training uses the heavier ML stack:
 
-### 3. 🧪 API Testing
 ```bash
-cd music-classifier
-python test_api.py
+uv run --extra train spotify-train --data-dir data --output music-classifier/app/model.joblib
 ```
 
 ## 🔬 Methodology
@@ -122,7 +111,7 @@ python test_api.py
 - **Important features**: danceability, energy, valence, tempo
 - **Time coverage**: 60 years of musical history (1960-2019)
 
-## 🔧 Technology Stack
+## Run The API
 
 ### Data Science
 - **Python** - main programming language
@@ -145,27 +134,60 @@ python test_api.py
 - **Seaborn** - statistical visualization
 - **Plotly** - interactive plots
 
-## 📚 Documentation
+Endpoints:
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/health` | Model and embedding status |
+| POST | `/predict` | Single track prediction |
+| POST | `/batch_predict` | Batch prediction |
+
+Example request:
+
+```json
+{
+  "track": "Hey Jude",
+  "artist": "The Beatles",
+  "decade_of_release": 1968,
+  "danceability": 0.5,
+  "energy": 0.7,
+  "key": 7,
+  "loudness": -8.5,
+  "mode": 1,
+  "speechiness": 0.03,
+  "acousticness": 0.2,
+  "instrumentalness": 0.0,
+  "liveness": 0.1,
+  "valence": 0.8,
+  "tempo": 120.0,
+  "duration_ms": 431000,
+  "time_signature": 4,
+  "chorus_hit": 0.5,
+  "sections": 8
+}
+```
 
 - **[📓 Main Research](Spotify_prediction.ipynb)** - complete data analysis and model training
 - **[📄 Research Report](Research_report.md)** - detailed description of methodology and results
 - **[🌐 API Documentation](music-classifier/README.md)** - API usage guide
 - **[⚙️ Training Entry Point](pipeline_generator.py)** - canonical retraining script for `hit_ensemble.joblib`
 
-## 🔗 API Endpoints
+Serving dependencies are intentionally kept inside the image:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | API and model status check |
-| `/predict` | POST | Single track prediction |
-| `/batch_predict` | POST | Batch prediction |
+```bash
+cd music-classifier
+docker compose up --build app
+```
 
-## 🤝 Contributing
+To retrain in a container profile:
 
-This project was created for educational purposes to demonstrate data science skills and ML solution development. Suggestions for improvements are welcome!
+```bash
+cd music-classifier
+docker compose --profile train run --build trainer
+```
 
-## 📄 License
+This split keeps local and CI feedback light while still giving a reproducible heavy ML environment when needed.
 
-This project is distributed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
+## Research
 
----
+`Spotify_prediction.ipynb` keeps the historical analysis and adds a final v2 Polars-first ensemble section. The production trainer and notebook now share the same package functions, so research and serving do not drift as easily.

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""
-Тестовый скрипт для проверки работы Music Classifier API
-"""
-import requests
-import json
+"""Small manual smoke test for a running Music Classifier API."""
+
+from __future__ import annotations
+
 import time
 
-# Базовый URL API
+import requests
+
 BASE_URL = "http://localhost:8000"
 
 def test_health_check():
@@ -48,7 +48,7 @@ def test_single_prediction():
         "duration_ms": 431000,
         "time_signature": 4,
         "chorus_hit": 0.5,
-        "sections": 8
+        "sections": 8,
     }
 
     try:
@@ -184,4 +184,4 @@ def main():
         return False
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(0 if main() else 1)

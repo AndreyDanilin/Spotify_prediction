@@ -2,7 +2,7 @@
 
 An API for classifying music tracks using BERT embeddings and a weighted ensemble model.
 
-## Description
+## Run With Docker
 
 This project is a web API for predicting music hit probability from audio features and track names. The API computes track-name embeddings internally and uses a pre-trained weighted soft-voting ensemble.
 
@@ -135,38 +135,9 @@ POST /predict
 }
 ```
 
-### Batch Prediction
-```
-POST /batch_predict
-```
+The image installs the `api` dependency extra, including the model runtime and SentenceTransformer stack. This is intentional: heavy serving dependencies live inside the container instead of the lightweight local test environment.
 
-**Request body:**
-```json
-{
-  "items": [
-    {
-      "artist": "Queen",
-      "track": "Bohemian Rhapsody",
-      "decade_of_release": 1970,
-      "danceability": 0.3,
-      "energy": 0.6,
-      "key": 0,
-      "loudness": -7.2,
-      "mode": 1,
-      "speechiness": 0.05,
-      "acousticness": 0.1,
-      "instrumentalness": 0.0,
-      "liveness": 0.2,
-      "valence": 0.4,
-      "tempo": 72.0,
-      "duration_ms": 355000,
-      "time_signature": 4,
-      "chorus_hit": 0.3,
-      "sections": 12
-    }
-  ]
-}
-```
+## Retrain In Docker
 
 **Response:**
 ```json
@@ -182,7 +153,7 @@ POST /batch_predict
 }
 ```
 
-## Input Parameters
+The trainer installs the `train` extra, runs `spotify-train`, and writes `app/model.joblib` plus `app/model.metadata.json`.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -205,9 +176,7 @@ POST /batch_predict
 | `chorus_hit` | float | Chorus hit probability |
 | `sections` | integer | Number of sections |
 
-## Testing
-
-Run the test script to verify all endpoints:
+After the API starts:
 
 ```bash
 python test_api.py
@@ -236,4 +205,8 @@ The API includes a health check endpoint for status monitoring:
 
 This project is part of a data analysis research project.
 
+- `GET /health`
+- `POST /predict`
+- `POST /batch_predict`
 
+`/predict` and `/batch_predict` accept track names, not precomputed embeddings. The service computes embeddings internally and then calls the saved classifier artifact.
