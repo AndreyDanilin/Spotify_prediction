@@ -62,6 +62,31 @@ class WeightedSoftVotingEnsemble:
         return [int(row[1] >= threshold) for row in self.predict_proba(records)]
 
 
+@dataclass
+class PreprocessedWeightedSoftVotingEnsemble:
+    preprocessor: Any
+    models: dict[str, Any]
+    weights: dict[str, float]
+    model_version: str = "2.0"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self._ensemble = WeightedSoftVotingEnsemble(
+            models=self.models,
+            weights=self.weights,
+            model_version=self.model_version,
+            metadata=self.metadata,
+        )
+        self.weights = self._ensemble.weights
+
+    def predict_proba(self, records: Any) -> list[list[float]]:
+        transformed = self.preprocessor.transform(records)
+        return self._ensemble.predict_proba(transformed)
+
+    def predict(self, records: Any, threshold: float = 0.5) -> list[int]:
+        return [int(row[1] >= threshold) for row in self.predict_proba(records)]
+
+
 def select_weighted_models(
     validation_scores: dict[str, float],
     *,

@@ -1,6 +1,10 @@
 import unittest
 
-from spotify_hit_model.ensemble import WeightedSoftVotingEnsemble, select_weighted_models
+from spotify_hit_model.ensemble import (
+    PreprocessedWeightedSoftVotingEnsemble,
+    WeightedSoftVotingEnsemble,
+    select_weighted_models,
+)
 
 
 class FakeModel:
@@ -11,6 +15,15 @@ class FakeModel:
     def predict_proba(self, records):
         self.seen = records
         return self.probabilities
+
+
+class FakePreprocessor:
+    def __init__(self):
+        self.calls = 0
+
+    def transform(self, records):
+        self.calls += 1
+        return [{"transformed": record["x"]} for record in records]
 
 
 class WeightedSoftVotingEnsembleTests(unittest.TestCase):
@@ -52,6 +65,23 @@ class WeightedSoftVotingEnsembleTests(unittest.TestCase):
     def test_ensemble_rejects_missing_weight(self):
         with self.assertRaisesRegex(ValueError, "Missing weights"):
             WeightedSoftVotingEnsemble(models={"a": FakeModel([[0.4, 0.6]])}, weights={})
+
+    def test_preprocessed_ensemble_transforms_records_once(self):
+        preprocessor = FakePreprocessor()
+        model_a = FakeModel([[0.2, 0.8]])
+        model_b = FakeModel([[0.6, 0.4]])
+        ensemble = PreprocessedWeightedSoftVotingEnsemble(
+            preprocessor=preprocessor,
+            models={"a": model_a, "b": model_b},
+            weights={"a": 0.5, "b": 0.5},
+        )
+
+        probabilities = ensemble.predict_proba([{"x": 10}])
+
+        self.assertEqual(probabilities, [[0.4, 0.6]])
+        self.assertEqual(preprocessor.calls, 1)
+        self.assertEqual(model_a.seen, [{"transformed": 10}])
+        self.assertEqual(model_b.seen, [{"transformed": 10}])
 
 
 if __name__ == "__main__":

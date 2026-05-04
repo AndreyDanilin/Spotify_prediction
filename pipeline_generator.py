@@ -21,17 +21,21 @@ def main() -> None:
         feature_cache_path=args.feature_cache_path,
         rebuild_feature_cache=args.rebuild_feature_cache,
         candidate_models=args.models,
+        model_params_path=args.model_params_path,
+        cv_splits=args.cv_splits,
+        ensemble_min_improvement=args.ensemble_min_improvement,
         tabm_epochs=args.tabm_epochs,
         tabm_device=args.tabm_device,
         tree_device=args.tree_device,
         verbose=True,
     )
     print(f"Ensemble artifact saved to {run.artifact_path}")
-    print("Validation scores:")
+    print("Cross-validation scores:")
     for name, scores in run.validation_scores.items():
         print(
             f"  {name}: "
             f"roc_auc={scores['roc_auc']:.4f}, "
+            f"roc_auc_std={scores.get('roc_auc_std', 0.0):.4f}, "
             f"accuracy={scores['accuracy']:.4f}, "
             f"f1={scores['f1']:.4f}"
         )
@@ -72,6 +76,24 @@ def parse_args() -> argparse.Namespace:
         default=("xgb", "catboost", "logreg", "tabm"),
         metavar="MODEL",
         help="Candidate models to train: xgb catboost logreg tabm.",
+    )
+    parser.add_argument(
+        "--model-params-path",
+        type=Path,
+        default=Path("artifacts/model_params.json"),
+        help="JSON file with Optuna best parameters to reuse for final training.",
+    )
+    parser.add_argument(
+        "--cv-splits",
+        type=int,
+        default=5,
+        help="Stratified CV folds for model and ensemble selection.",
+    )
+    parser.add_argument(
+        "--ensemble-min-improvement",
+        type=float,
+        default=0.001,
+        help="Minimum OOF ROC-AUC gain required to add another model to the ensemble.",
     )
     parser.add_argument("--tabm-epochs", type=int, default=80)
     parser.add_argument(
