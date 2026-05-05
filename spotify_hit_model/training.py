@@ -433,6 +433,7 @@ def build_model_factories(
             "random_state": RANDOM_STATE,
             **dict(device_params.get("catboost", {})),
         }
+        params = sanitize_model_params({"catboost": params})["catboost"]
         factories["catboost"] = lambda params=params: CatBoostClassifier(**params)
 
     if "logreg" in names:
@@ -624,6 +625,10 @@ def sanitize_model_params(
         bootstrap_type = str(catboost.get("bootstrap_type", "Bayesian")).lower()
         if bootstrap_type == "bayesian":
             catboost.pop("subsample", None)
+        task_type = str(catboost.get("task_type", "CPU")).lower()
+        if task_type == "gpu":
+            catboost.pop("colsample_bylevel", None)
+            catboost.pop("rsm", None)
         catboost.setdefault("logging_level", "Silent")
 
     if "logreg" in sanitized:
