@@ -3,7 +3,7 @@ name = "spotify-prediction"
 version = "0.2.0"
 description = "Spotify hit prediction research, training pipeline, and Litestar API."
 readme = "Readme.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "litestar==2.21.1",
     "numpy==2.3.5",
