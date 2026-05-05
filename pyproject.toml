@@ -37,7 +37,9 @@ train = [
 ]
 dev = [
     "httpx==0.28.1",
+    "pandas==2.3.3",
     "pytest==9.0.2",
+    "scikit-learn==1.8.0",
 ]
 notebook = [
     "ipykernel==7.1.0",

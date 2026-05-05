@@ -1683,7 +1683,9 @@ api = [
 ]
 dev = [
     { name = "httpx" },
+    { name = "pandas" },
     { name = "pytest" },
+    { name = "scikit-learn" },
 ]
 notebook = [
     { name = "ipykernel" },
@@ -1716,6 +1718,7 @@ requires-dist = [
     { name = "numpy", specifier = "==2.3.5" },
     { name = "optuna", marker = "extra == 'train'", specifier = "==4.8.0" },
     { name = "pandas", marker = "extra == 'api'", specifier = "==2.3.3" },
+    { name = "pandas", marker = "extra == 'dev'", specifier = "==2.3.3" },
     { name = "pandas", marker = "extra == 'train'", specifier = "==2.3.3" },
     { name = "polars", specifier = "==1.39.3" },
     { name = "pyarrow", marker = "extra == 'api'", specifier = "==22.0.0" },
@@ -1724,6 +1727,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = "==9.0.2" },
     { name = "python-dotenv", marker = "extra == 'api'", specifier = "==1.2.1" },
     { name = "scikit-learn", marker = "extra == 'api'", specifier = "==1.8.0" },
+    { name = "scikit-learn", marker = "extra == 'dev'", specifier = "==1.8.0" },
     { name = "scikit-learn", marker = "extra == 'train'", specifier = "==1.8.0" },
     { name = "seaborn", marker = "extra == 'train'", specifier = "==0.13.2" },
     { name = "sentence-transformers", marker = "extra == 'api'", specifier = "==5.4.1" },
