@@ -49,6 +49,35 @@ class TrainingConfigTests(unittest.TestCase):
         self.assertNotIn("subsample", bayesian["catboost"])
         self.assertEqual(bernoulli["catboost"]["subsample"], 0.5)
 
+    def test_catboost_gpu_sanitizer_removes_unsupported_rsm_options(self):
+        sanitized = training.sanitize_model_params(
+            {
+                "catboost": {
+                    "task_type": "GPU",
+                    "colsample_bylevel": 0.4,
+                    "rsm": 0.5,
+                }
+            }
+        )
+
+        self.assertNotIn("colsample_bylevel", sanitized["catboost"])
+        self.assertNotIn("rsm", sanitized["catboost"])
+
+    def test_catboost_factory_removes_rsm_after_gpu_device_params_are_merged(self):
+        previous_catboost = sys.modules.get("catboost")
+        sys.modules["catboost"] = types.SimpleNamespace(CatBoostClassifier=FakeCatBoostClassifier)
+        self.addCleanup(self._restore_catboost_module, previous_catboost)
+
+        factory = training.build_model_factories(
+            include=("catboost",),
+            model_params={"catboost": {"colsample_bylevel": 0.4}},
+            device_params={"catboost": {"task_type": "GPU"}},
+        )["catboost"]
+        factory()
+
+        self.assertEqual(FakeCatBoostClassifier.last_kwargs["task_type"], "GPU")
+        self.assertNotIn("colsample_bylevel", FakeCatBoostClassifier.last_kwargs)
+
     def test_model_params_round_trip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "model_params.json"
@@ -96,6 +125,13 @@ class TrainingConfigTests(unittest.TestCase):
         else:
             sys.modules["catboost"] = previous_catboost
         training.create_preprocessor = previous_preprocessor
+
+    @staticmethod
+    def _restore_catboost_module(previous_catboost):
+        if previous_catboost is None:
+            sys.modules.pop("catboost", None)
+        else:
+            sys.modules["catboost"] = previous_catboost
 
 
 if __name__ == "__main__":
