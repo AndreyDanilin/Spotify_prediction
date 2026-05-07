@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TrackInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     track: str = Field(min_length=1)
     artist: str = Field(min_length=1)
     decade_of_release: int | str
@@ -25,6 +27,8 @@ class TrackInput(BaseModel):
 
 
 class BatchPredictionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     items: list[TrackInput] = Field(min_length=1)
 
 

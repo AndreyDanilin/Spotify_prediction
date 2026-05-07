@@ -30,9 +30,8 @@ class ModelService:
 
     @classmethod
     def from_environment(cls) -> "ModelService":
-        default_path = Path(__file__).resolve().parents[2] / "music-classifier" / "app" / "model.joblib"
-        fallback_path = Path(__file__).resolve().parents[2] / "music-classifier" / "app" / "xgb_pipe.joblib"
-        model_path = Path(os.getenv("MODEL_PATH", str(default_path if default_path.exists() else fallback_path)))
+        default_path = Path(__file__).resolve().parents[2] / "music-classifier" / "app" / "hit_ensemble.joblib"
+        model_path = Path(os.getenv("MODEL_PATH", str(default_path)))
         metadata_path = os.getenv("MODEL_METADATA_PATH")
         embedding_model = os.getenv("EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
         return cls(model_path=model_path, metadata_path=metadata_path, embedding_model_name=embedding_model)
@@ -64,20 +63,23 @@ class ModelService:
 
     @property
     def embedding_model_loaded(self) -> bool:
-        try:
-            return hasattr(self.embedding_model, "encode")
-        except Exception:
-            return False
+        return self._embedding_model is not None and hasattr(self._embedding_model, "encode")
 
     @property
     def model_version(self) -> str:
         if self._metadata:
             return str(self._metadata.get("model_version", "unknown"))
+        try:
+            version = getattr(self.model, "model_version", None)
+        except Exception:
+            version = None
+        if version is not None:
+            return str(version)
         return self.model_path.stem
 
     @property
     def feature_count(self) -> int:
-        feature_names = getattr(self.model, "feature_names_in_", None)
+        feature_names = self._feature_names()
         if feature_names is not None:
             return len(feature_names)
         return int(self._metadata.get("feature_count", 0))
@@ -88,6 +90,9 @@ class ModelService:
 
     def _feature_names(self) -> list[str] | None:
         feature_names = getattr(self.model, "feature_names_in_", None)
+        if feature_names is None:
+            preprocessor = getattr(self.model, "preprocessor", None)
+            feature_names = getattr(preprocessor, "feature_names_in_", None)
         if feature_names is None:
             return None
         return [str(name) for name in feature_names]
@@ -104,8 +109,14 @@ class ModelService:
             {
                 "track": str(record["track"]),
                 "prediction": int(predictions[idx]),
-                "probabilities": [float(value) for value in probabilities[idx].tolist()],
+                "probabilities": [float(value) for value in _as_list(probabilities[idx])],
                 "model_version": self.model_version,
             }
             for idx, record in enumerate(records)
         ]
+
+
+def _as_list(values: Any) -> list[Any]:
+    if hasattr(values, "tolist"):
+        return values.tolist()
+    return list(values)

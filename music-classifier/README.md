@@ -1,112 +1,106 @@
 # Music Classifier API
 
-An API for classifying music tracks using BERT embeddings and a weighted ensemble model.
+Litestar ASGI API for Spotify hit prediction. The service loads `app/hit_ensemble.joblib`, computes track-name embeddings with `all-MiniLM-L6-v2`, and returns hit/non-hit probabilities.
 
-## Run With Docker
-
-This project is a web API for predicting music hit probability from audio features and track names. The API computes track-name embeddings internally and uses a pre-trained weighted soft-voting ensemble.
-
-The supported runtime target is **Python 3.13**.
-
-## Features
-
-- 🎵 Single prediction for one track
-- 📦 Batch processing for multiple tracks
-- 🔍 Health check for API status monitoring
-- 🐳 Docker containerization for easy deployment
+The supported runtime target is **CPython 3.13**.
 
 ## Project Structure
 
-```
+```text
 music-classifier/
 ├── app/
-│ ├── main.py # Main FastAPI application
-│ ├── config.py # Application configuration
-│ └── hit_ensemble.joblib # Pre-trained weighted ensemble
+│   └── hit_ensemble.joblib      # Production model artifact
 ├── scripts/
-│ └── start.sh # Server startup script
-├── test_api.py # Test script
-├── requirements.txt # Python dependencies
-├── Dockerfile # Docker image
-├── docker-compose.yml # Docker Compose configuration
-└── README.md # This file
+│   └── start.sh                 # Uvicorn launcher for spotify_prediction.api:app
+├── test_api.py                  # Manual smoke test for a running API
+├── requirements.txt             # Container/local serving dependencies
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
 ```
 
-## Quick Start
+The active application object lives in `src/spotify_prediction/api.py`. The `music-classifier/app` directory is now only the model-artifact location kept for compatibility with existing deployment paths.
 
-The API expects `app/hit_ensemble.joblib`. Build it from the repository root before starting the server:
+## Build Or Refresh The Model Artifact
+
+Run from the repository root:
 
 ```bash
-python pipeline_generator.py \
+uv run --extra train python pipeline_generator.py \
   --hf-home .hf-cache \
   --offline-embeddings \
-  --tabm-device cuda \
-  --tree-device cuda
+  --tabm-device cpu \
+  --tree-device cpu \
+  --models xgb catboost logreg
 ```
 
-Omit `--offline-embeddings` on the first run if the `all-MiniLM-L6-v2` embedding model is not cached yet.
+Omit `--offline-embeddings` on the first run if the embedding model is not cached yet. The script writes `music-classifier/app/hit_ensemble.joblib` and may reuse `artifacts/training_features.joblib`.
 
-### Local Launch
+Verify the artifact before serving or committing it:
 
-1. **Install dependencies:**
-   ```bash
-   python -V  # expected: Python 3.13.x
-   cd music-classifier
-   pip install -r requirements.txt
-   ```
-
-2. **Start the application:**
-   ```bash
-   python app/main.py
-   ```
-
-3. **Test the functionality:**
-   ```bash
-   python test_api.py
-   ```
-
-### Docker Launch
-
-1. **Build and run with Docker Compose:**
-   ```bash
-   cd music-classifier
-   docker-compose up --build
-   ```
-
-2. **Test the functionality:**
-   ```bash
-   python test_api.py
-   ```
-
-## API Endpoints
-
-### Health Check
+```bash
+uv run --extra train python -c "import joblib; joblib.load('music-classifier/app/hit_ensemble.joblib'); print('ok')"
 ```
-GET /health
-```
-Test of python app/main.py and loaded models.
 
-**Response:**
+## Local Launch
+
+From the repository root:
+
+```bash
+python -V  # expected: Python 3.13.x
+pip install -r music-classifier/requirements.txt
+PYTHONPATH=src:. uvicorn spotify_prediction.api:app --host 0.0.0.0 --port 8000
+```
+
+On PowerShell, use:
+
+```powershell
+$env:PYTHONPATH = "src;."
+uvicorn spotify_prediction.api:app --host 0.0.0.0 --port 8000
+```
+
+## Docker Launch
+
+```bash
+cd music-classifier
+docker compose up --build app
+```
+
+The image installs `requirements.txt`, copies `src/spotify_prediction`, `spotify_hit_model`, and `music-classifier/app/hit_ensemble.joblib`, then starts:
+
+```bash
+uvicorn spotify_prediction.api:app --host 0.0.0.0 --port 8000
+```
+
+## Endpoints
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/health` | Model and embedding-model status |
+| POST | `/predict` | Single track prediction |
+| POST | `/batch_predict` | Batch prediction |
+
+### Health Response
+
 ```json
 {
   "status": "OK",
   "model_loaded": true,
   "embedding_model_loaded": true,
-  "model_version": "2.0"
+  "model_version": "2.0",
+  "feature_count": 399
 }
 ```
 
-### Single Prediction
-```
-POST /predict
-```
+If model loading fails, `/health` still returns HTTP 200 with `"status": "DEGRADED"`.
 
-**Request body:**
+### Prediction Request
+
 ```json
 {
   "artist": "The Beatles",
   "track": "Hey Jude",
-  "decade_of_release": 1960,
+  "decade_of_release": 1968,
   "danceability": 0.5,
   "energy": 0.7,
   "key": 7,
@@ -125,88 +119,26 @@ POST /predict
 }
 ```
 
-**Response:**
+Unknown request fields are rejected.
+
+### Prediction Response
+
 ```json
 {
+  "track": "Hey Jude",
   "prediction": 1,
-  "probabilities": [0.2, 0.8],
-  "model_version": "2.0",
-  "track_embedding_dim": 384
+  "probabilities": [0.12, 0.88],
+  "model_version": "2.0"
 }
 ```
 
-The image installs the `api` dependency extra, including the model runtime and SentenceTransformer stack. This is intentional: heavy serving dependencies live inside the container instead of the lightweight local test environment.
+## Current Model Metrics
 
-## Retrain In Docker
+The current artifact selected CatBoost with weight `1.0` from the weighted-ensemble selection process.
 
-**Response:**
-```json
-{
-  "results": [
-    {
-      "prediction": 0,
-      "probabilities": [0.7, 0.3],
-      "track": "Bohemian Rhapsody",
-      "model_version": "2.0"
-    }
-  ]
-}
-```
-
-The trainer installs the `train` extra, runs `spotify-train`, and writes `app/model.joblib` plus `app/model.metadata.json`.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `artist` | string | Artist name |
-| `track` | string | Track title |
-| `decade_of_release` | integer | Release decade (1960, 1970, etc.) |
-| `danceability` | float | Danceability (0.0-1.0) |
-| `energy` | float | Energy level (0.0-1.0) |
-| `key` | integer | Musical key (0-11) |
-| `loudness` | float | Loudness in dB |
-| `mode` | integer | Mode (0=minor, 1=major) |
-| `speechiness` | float | Accepted for compatibility, ignored by the trained model |
-| `acousticness` | float | Acousticness (0.0-1.0) |
-| `instrumentalness` | float | Accepted for compatibility, ignored by the trained model |
-| `liveness` | float | Liveness (0.0-1.0) |
-| `valence` | float | Positivity (0.0-1.0) |
-| `tempo` | float | Tempo in BPM |
-| `duration_ms` | integer | Duration in milliseconds |
-| `time_signature` | integer | Time signature (3, 4, 5, etc.) |
-| `chorus_hit` | float | Chorus hit probability |
-| `sections` | integer | Number of sections |
-
-After the API starts:
-
-```bash
-python test_api.py
-```
-
-## Monitoring
-
-The API includes a health check endpoint for status monitoring:
-- ML model loading verification
-- Embedding model loading verification
-- Model version
-- Overall application status
-
-## Technologies
-
-- **FastAPI** - Web framework for API creation
-- **Weighted ensemble** - Soft voting over the best validation models
-- **XGBoost / CatBoost / Logistic Regression / TabM** - Candidate model families
-- **Sentence Transformers** - BERT embeddings for text
-- **Python 3.13** - target runtime for local and containerized deployment
-- **Pandas** - Data processing
-- **Docker** - Containerization
-- **Uvicorn** - ASGI server
-
-## License
-
-This project is part of a data analysis research project.
-
-- `GET /health`
-- `POST /predict`
-- `POST /batch_predict`
-
-`/predict` and `/batch_predict` accept track names, not precomputed embeddings. The service computes embeddings internally and then calls the saved classifier artifact.
+| Metric | Value |
+| --- | ---: |
+| 5-fold CV ROC-AUC | 0.9949 |
+| Holdout ROC-AUC | 0.9958 |
+| Holdout accuracy | 0.9707 |
+| Holdout F1 | 0.9705 |
