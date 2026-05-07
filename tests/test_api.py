@@ -27,6 +27,22 @@ class FakeModelService:
         ]
 
 
+class DegradedModelService:
+    model_version = "missing-model"
+
+    @property
+    def model_loaded(self) -> bool:
+        return False
+
+    @property
+    def embedding_model_loaded(self) -> bool:
+        return False
+
+    @property
+    def feature_count(self) -> int:
+        raise RuntimeError("model is unavailable")
+
+
 def _payload(track: str = "Hey Jude") -> dict[str, object]:
     return {
         "track": track,
@@ -92,3 +108,41 @@ def test_health_reports_loaded_resources() -> None:
         "model_version": "test-model",
         "feature_count": 21,
     }
+
+
+def test_health_reports_degraded_when_feature_count_is_unavailable() -> None:
+    app = create_app(model_service=DegradedModelService())
+
+    with TestClient(app=app) as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "DEGRADED",
+        "model_loaded": False,
+        "embedding_model_loaded": False,
+        "model_version": "missing-model",
+        "feature_count": 0,
+    }
+
+
+def test_predict_rejects_unknown_fields() -> None:
+    app = create_app(model_service=FakeModelService())
+    payload = _payload()
+    payload["surprise"] = 1
+
+    with TestClient(app=app) as client:
+        response = client.post("/predict", json=payload)
+
+    assert response.status_code == 400
+
+
+def test_batch_predict_rejects_unknown_item_fields() -> None:
+    app = create_app(model_service=FakeModelService())
+    payload = _payload()
+    payload["surprise"] = 1
+
+    with TestClient(app=app) as client:
+        response = client.post("/batch_predict", json={"items": [payload]})
+
+    assert response.status_code == 400

@@ -58,13 +58,13 @@ def test_single_prediction():
             headers={"Content-Type": "application/json"}
         )
 
-        if response.status_code == 200:
+        if response.status_code == 201:
             result = response.json()
             print(f"Предсказание успешно:")
+            print(f"   - Трек: {result['track']}")
             print(f"   - Предсказанный класс: {result['prediction']}")
             print(f"   - Вероятности: {result['probabilities']}")
             print(f"   - Версия модели: {result['model_version']}")
-            print(f"   - Размерность эмбеддинга: {result['track_embedding_dim']}")
             return True
         else:
             print(f"Ошибка предсказания: {response.status_code}")
@@ -132,7 +132,7 @@ def test_batch_prediction():
             headers={"Content-Type": "application/json"}
         )
 
-        if response.status_code == 200:
+        if response.status_code == 201:
             result = response.json()
             print(f"Пакетное предсказание успешно:")
             for i, item in enumerate(result['results']):

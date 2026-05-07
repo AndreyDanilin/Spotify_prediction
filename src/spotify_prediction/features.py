@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from math import log1p
 from typing import Any
 
 import numpy as np
@@ -89,7 +88,7 @@ def _add_audio_interactions(frame: pl.DataFrame) -> pl.DataFrame:
         (pl.col("energy") * pl.col("danceability")).alias("energy_danceability"),
         (pl.col("valence") * pl.col("danceability")).alias("valence_danceability"),
         (pl.col("energy") * pl.col("valence")).alias("energy_valence"),
-        pl.col("duration_ms").map_elements(lambda value: log1p(max(float(value), 0.0)), return_dtype=pl.Float64).alias("log_duration_ms"),
+        pl.col("duration_ms").clip(lower_bound=0.0).log1p().alias("log_duration_ms"),
         (pl.col("tempo") / 10.0).floor().alias("tempo_bin"),
     )
 

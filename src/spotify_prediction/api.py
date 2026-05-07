@@ -20,12 +20,19 @@ def create_app(model_service: Any | None = None) -> Litestar:
 
     @get("/health")
     async def health() -> HealthResponse:
+        model_loaded = service.model_loaded
+        embedding_model_loaded = service.embedding_model_loaded
+        try:
+            feature_count = service.feature_count
+        except Exception:
+            feature_count = 0
+
         return HealthResponse(
-            status="OK" if service.model_loaded and service.embedding_model_loaded else "DEGRADED",
-            model_loaded=service.model_loaded,
-            embedding_model_loaded=service.embedding_model_loaded,
+            status="OK" if model_loaded and embedding_model_loaded else "DEGRADED",
+            model_loaded=model_loaded,
+            embedding_model_loaded=embedding_model_loaded,
             model_version=service.model_version,
-            feature_count=service.feature_count,
+            feature_count=feature_count,
         )
 
     @post("/predict", status_code=201)
